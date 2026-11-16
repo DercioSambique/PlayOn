@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lançamentos</title>
+<style>
+  :root{--bg:#0e0e12;--card:#18181f;--txt:#f2f2f5;--mut:#9a9aa8;--acc:#ff4f6d;--acc2:#7a5cff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:110px}
+  header{padding:48px 20px 24px;text-align:center;background:linear-gradient(135deg,var(--acc2),var(--acc));}
+  header h1{font-size:clamp(1.8rem,5vw,3rem)}
+  header p{opacity:.9;margin-top:8px}
+  nav{display:flex;gap:10px;justify-content:center;padding:20px;flex-wrap:wrap}
+  nav button{background:var(--card);color:var(--txt);border:1px solid #2a2a35;padding:10px 20px;border-radius:999px;cursor:pointer;font-size:.95rem}
+  nav button.on{background:var(--acc);border-color:var(--acc)}
+  main{max-width:1100px;margin:0 auto;padding:0 20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+  .card{background:var(--card);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .15s;position:relative}
+  .card:hover{transform:translateY(-4px)}
+  .capa{aspect-ratio:1/1;background:linear-gradient(135deg,var(--acc2),var(--acc));background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-size:3rem}
+  .info{padding:12px 14px 16px}
+  .info h3{font-size:1.02rem}
+  .info small{color:var(--mut);display:block;margin-top:3px}
+  .tag{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.65);padding:4px 10px;border-radius:999px;font-size:.75rem}
+  .soon{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:600;text-align:center;padding:10px}
+  .soon span{font-weight:400;color:var(--mut);font-size:.85rem;margin-top:4px}
+  .vazio{text-align:center;color:var(--mut);padding:50px 0}
+  #player{position:fixed;left:0;right:0;bottom:0;background:#15151cf2;backdrop-filter:blur(8px);border-top:1px solid #2a2a35;padding:10px 16px;display:none;align-items:center;gap:14px;flex-wrap:wrap}
+  #player .t{min-width:160px;flex:0 0 auto}
+  #player .t b{display:block}
+  #player .t small{color:var(--mut)}
+  #player audio{flex:1;min-width:220px}
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+  #modal .box{width:min(960px,100%)}
+  #modal video,#modal iframe{width:100%;aspect-ratio:16/9;background:#000;border:0;border-radius:10px}
+  #modal .cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  #modal .cab button{background:var(--acc);border:0;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer}
+  footer{text-align:center;color:var(--mut);padding:30px 20px;font-size:.85rem}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="nome"></h1>
+  <p id="slogan"></p>
+</header>
+
+<nav>
+  <button data-f="todos" class="on">Todos</button>
+  <button data-f="musica">Músicas</button>
+  <button data-f="video">Vídeos</button>
+</nav>
+
+<main><div class="grid" id="grid"></div></main>
+<footer id="rodape"></footer>
+
+<div id="player">
+  <div class="t"><b id="pTitulo"></b><small id="pArtista"></small></div>
+  <audio id="audio" controls controlsList="nodownload noplaybackrate" preload="none"></audio>
+</div>
+
+<div id="modal">
+  <div class="box">
+    <div class="cab"><b id="mTitulo"></b><button id="fechar">Fechar ✕</button></div>
+    <div id="mConteudo"></div>
+  </div>
+</div>
+
+<script src="conteudo.js"></script>
+<script>
+const S = window.SITE;
+const $ = s => document.querySelector(s);
+let filtro = "todos";
+
+const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dataLanc = i => new Date(i.data + "T00:00:00");
+const lancado = i => dataLanc(i) <= new Date();
+const fmt = d => d.toLocaleDateString("pt-PT", {day:"2-digit", month:"long", year:"numeric"});
+
+document.title = S.nome;
+$("#nome").textContent = S.nome;
+$("#slogan").textContent = S.slogan;
+$("#rodape").textContent = "© " + new Date().getFullYear() + " " + S.nome + " · " + S.contactos;
+
+function render(){
+  const lista = S.itens
+    .filter(i => filtro === "todos" || i.tipo === filtro)
+    .sort((a,b) => dataLanc(b) - dataLanc(a));
+  const g = $("#grid");
+  if(!lista.length){ g.innerHTML = '<p class="vazio">Sem conteúdo ainda.</p>'; return; }
+  g.innerHTML = lista.map(i => {
+    const ok = lancado(i);
+    const bg = i.capa ? `style="background-image:url('${esc(i.capa)}')"` : "";
+    return `<div class="card" data-id="${esc(i.id)}">
+      <div class="capa" ${bg}>${i.capa ? "" : (i.tipo === "musica" ? "♪" : "▶")}</div>
+      <span class="tag">${i.tipo === "musica" ? "Música" : "Vídeo"}</span>
+      ${ok ? "" : `<div class="soon">Em breve<span>${fmt(dataLanc(i))}</span></div>`}
+      <div class="info"><h3>${esc(i.titulo)}</h3><small>${esc(i.artista)} · ${fmt(dataLanc(i))}</small></div>
+    </div>`;
+  }).join("");
+}
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); filtro = b.dataset.f; render();
+});
+
+$("#grid").onclick = e => {
+  const c = e.target.closest(".card"); if(!c) return;
+  const item = S.itens.find(i => i.id === c.dataset.id);
+  if(!item || !lancado(item)) return;
+  item.tipo === "musica" ? tocarMusica(item) : abrirVideo(item);
+};
+
+function tocarMusica(i){
+  if(i.fonte === "youtube"){ abrirVideo(i); return; }
+  $("#pTitulo").textContent = i.titulo;
+  $("#pArtista").textContent = i.artista;
+  const a = $("#audio");
+  a.src = i.ficheiro; a.play().catch(()=>{});
+  $("#player").style.display = "flex";
+}
+
+function abrirVideo(i){
+  $("#mTitulo").textContent = i.titulo + " — " + i.artista;
+  $("#mConteudo").innerHTML = i.fonte === "youtube"
+    ? `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(i.ficheiro)}?rel=0&autoplay=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`
+    : `<video src="${esc(i.ficheiro)}" controls autoplay controlsList="nodownload noplaybackrate" disablePictureInPicture playsinline></video>`;
+  $("#modal").style.display = "flex";
+}
+function fecharModal(){ $("#modal").style.display = "none"; $("#mConteudo").innerHTML = ""; }
+$("#fechar").onclick = fecharModal;
+$("#modal").onclick = e => { if(e.target.id === "modal") fecharModal(); };
+
+// Desencorajar o download (clique direito sobre media)
+document.addEventListener("contextmenu", e => {
+  if(e.target.closest("audio,video,.capa")) e.preventDefault();
+});
+
+render();
+</script>
+</body>
+</html>
